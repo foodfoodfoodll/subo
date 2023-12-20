@@ -73,7 +73,8 @@ def create_mapping(flow: "Flow", json_file: str, subo_name: str, mapping_version
                 comment: str = ""
                 tag_descr: str = f"{values.describe_table}. {column_data.description}" if column_data.description else f"{values.describe_table}"
                 tag_colType: str = column_data.colType
-                attr_colType: str = "string"
+                # attr_colType: str = "string" 
+                attr_colType: str = 'decimal(38,2)' if column_data.colType in ('number', 'decimal') else ('bigint' if column_data.colType in ('integer', 'bigserial') else 'string')
                 if len(values.attributes.explodedColumns) == 1:
                     tag_json: str = ".".join(column_data.name.split(".")[1:])
                 else:

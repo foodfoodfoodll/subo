@@ -87,11 +87,11 @@ class Transform:
             parsed_object.append(parsed_rows)
 
         if not anyOfExists:
-            preFilterCondition = f"value like '%Class_:_{self.meta_class}%'"
-            postFilterCondition = f"meta.Class = '{self.meta_class}'"
+            preFilterCondition = f'value like "%Class_:_{self.meta_class}%"'
+            postFilterCondition = f'meta.Class = "{self.meta_class}"'
         else:
-            preFilterCondition = f"value like '%Class_:_{self.meta_class}%' and value like '%Type_:_%'"
-            postFilterCondition = f"payload.Type = ''"
+            preFilterCondition = f'value like "%Class_:_{self.meta_class}%" and value like "%Type_:_%"'
+            postFilterCondition = f'payload.Type = ""'
 
         table_attr = TableAttributes(
             explodedColumns=explodedColumns,
