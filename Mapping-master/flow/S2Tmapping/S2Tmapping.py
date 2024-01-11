@@ -135,6 +135,7 @@ def create_mapping(flow: "Flow", json_file: str, subo_name: str, mapping_version
     orange_fill = PatternFill(start_color='ffd966', end_color='ffd966', fill_type='solid')
     blue_fill = PatternFill(start_color='A5C4E0', end_color='A5C4E0', fill_type='solid')
     green_fill = PatternFill(start_color='aed59d', end_color='aed59d', fill_type='solid')
+    red_fill = PatternFill(start_color='e6b8b7', end_color='e6b8b7', fill_type='solid') #Цвет заливка длинных кодов
 
     border = Border(
         left=Side(style='thin'),
@@ -162,6 +163,12 @@ def create_mapping(flow: "Flow", json_file: str, subo_name: str, mapping_version
     for cell in ws[f"{start_source_letter}{2}":f"{end_source_letter}{2}"][0]:
         cell.fill = green_fill
 
+
+    #Заливка столбца R в зависимости от длины кода атрибута. Длина кода атрибута регулируется переменной max_len_attr_code. По умолчанию подкрашиваются коды длиннее 64 символов
+    max_len_attr_code = 64
+    for i in range(3, ws.max_row + 1):
+        if len(ws["R" + str(i)].value) > max_len_attr_code:
+            ws["R" + str(i)].fill = red_fill 
 
     ws.merge_cells(f"A1:{sourcetarget_letter}1")
     ws["A1"] = "Source/Target"
