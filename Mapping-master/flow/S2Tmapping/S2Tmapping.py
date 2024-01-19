@@ -8,10 +8,16 @@ from openpyxl.utils.cell import get_column_letter
 if typing.TYPE_CHECKING:
     from flow.flow import Flow
 
+def rreplace(s, old, new, occurrence):
+    li = s.rsplit(old, occurrence)
+    return new.join(li)
+
 def create_mapping(flow: "Flow", json_file: str, subo_name: str, mapping_version: str, database: str) -> None:
-    replace_version: str = json_file.split('_')[-1][2:-5] if len(json_file.split('_')[-1][2:-5]) > 0 else '1.0'
+    replace_version: str = json_file.rsplit('_')[-1][2:-5] if len(json_file.rsplit('_')[-1][2:-5]) > 0 else '1.0'
     file_name: str = os.path.join(os.path.dirname(json_file), f'S2T_mapping_{subo_name}_'
-                             + os.path.basename(json_file).replace('json', 'xlsx')).replace(replace_version, str(mapping_version))
+                             + os.path.basename(json_file).replace('json', 'xlsx'))
+    
+    file_name = rreplace(file_name, replace_version, str(mapping_version), 1)
 
     # create new book excel
     wb = openpyxl.Workbook()
