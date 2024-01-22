@@ -51,26 +51,27 @@ def get_schema_from_s2t(s2t_path):
     """
     df = pd.read_excel(s2t_path, sheet_name='Mapping', skiprows=1)
     column_names = list(df.columns.values)
-    if 'Таблица.1' in column_names and 'Код атрибута.1' in column_names:
-        df = df[['Таблица.1', 'Код атрибута.1']].rename(columns={'Таблица.1': 'table', 'Код атрибута.1': 'attribute'})
-    elif 'Таблица' in column_names and 'Код атрибута.1' in column_names:
-        df = df[['Таблица', 'Код атрибута.1']].rename(columns={'Таблица': 'table', 'Код атрибута.1': 'attribute'})
-    elif 'Таблица.1' in column_names and 'Код атрибута' in column_names:
-        df = df[['Таблица.1', 'Код атрибута']].rename(columns={'Таблица.1': 'table', 'Код атрибута': 'attribute'})
-    elif 'Таблица' in column_names and 'Код атрибута' in column_names:
-        df = df[['Таблица', 'Код атрибута']].rename(columns={'Таблица': 'table', 'Код атрибута': 'attribute'})
-    else:  
-        messagebox.showinfo(title="Ошибка", message="В маппинге не найдены колонки 'Таблица', 'Код атрибута'.")
-        raise Exception('В маппинге не найдены колонки "Таблица", "Код атрибута".')
+
+    if 'Таблица.1' in column_names:
+        table_col = 'Таблица.1'
+    else:
+        table_col = 'Таблица'
+
+    if 'Код атрибута.1' in column_names:
+        code_col = 'Код атрибута.1'
+    else:
+        code_col = 'Код атрибута'   
+
+    df = df[[table_col, code_col]]
     
-    grouped = df.groupby(['table'])['attribute'].apply(list).reset_index()
+    grouped = df.groupby([table_col])[code_col].apply(list).reset_index()
     del df
     schema = {}
     for index, row in grouped.iterrows():
-        schema[row['table']] = []
-        for item in row['attribute']:
+        schema[row[table_col]] = []
+        for item in row[code_col]:
             item = item.lower().strip()
-            schema[row['table']].append(item)
+            schema[row[table_col]].append(item)
     return schema
 
 def exclude_tech_columns(schema, excluded_columns):
