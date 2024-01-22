@@ -22,7 +22,6 @@ def print_message(text, widget, output_to_file=False, path=''):
             file.write(text + '\n') 
 
 def get_attrs_from_dag(dags_path):
-    dags_path='1642_19_datalake_subo_gsz_1567_parse_load.py'
     try:
         with open(dags_path, 'r', encoding="utf-8") as file:
             dag = file.read()
@@ -58,7 +57,6 @@ def get_attrs_from_dag(dags_path):
     return dag_dict
 
 def get_attrs_from_mapping(mappings_directory):
-    mappings_directory='.'
     try:
         list_dir = os.listdir(mappings_directory)
         mappings = []
@@ -75,7 +73,25 @@ def get_attrs_from_mapping(mappings_directory):
 
     excel_df = None
     for path in mappings:
-        tmp_df = pd.read_excel(path, sheet_name='Mapping', skiprows=1, usecols=['Таблица', 'Код атрибута', 'Тип данных.1'])
+        tmp_df = pd.read_excel(path, sheet_name='Mapping', skiprows=1)
+        column_names = list(tmp_df.columns.values)
+
+        if 'Таблица.1' in column_names:
+            table_col = 'Таблица.1'
+        else:
+            table_col = 'Таблица'
+
+        if 'Код атрибута.1' in column_names:
+            code_col = 'Код атрибута.1'
+        else:
+            code_col = 'Код атрибута'
+
+        if 'Тип данных.1' in column_names:
+            type_col = 'Тип данных.1'
+        else:
+            type_col = 'Тип данных'
+        tmp_df = tmp_df[[table_col, code_col, type_col]]
+
         if excel_df is None:
             excel_df = tmp_df
         else:
@@ -83,11 +99,17 @@ def get_attrs_from_mapping(mappings_directory):
 
     mapping_dict = {}
     for index, row in excel_df.iterrows():
-        table_name = row['Таблица'].lower()
+        try:
+            table_name = row[table_col].lower()
+        except:
+            table_name = row[table_col]
         if table_name not in mapping_dict.keys():
             mapping_dict[table_name]=[]
         m = mapping_dict[table_name]
-        m.append({'name': row['Код атрибута'].lower(), 'type':  row['Тип данных.1'].lower()})
+        try:
+            m.append({'name': row[code_col].lower().strip(), 'type':  row[type_col].lower()})
+        except:
+            m.append({'name': row[code_col], 'type':  row[type_col]})
         mapping_dict[table_name] = m
     return mapping_dict
 
@@ -97,18 +119,22 @@ def compare_attrs(dag_dict, mapping_dict, output_diff, output_to_file, mappings_
         dag_set = set()
         for item in value:
             mapping_set.add(item['name'])
-        for item in dag_dict[key]:
-            if 'alias' not in item.keys():
-                dag_set.add(item['name'])
-            else:
-                dag_set.add(item['alias'])
-        if mapping_set != dag_set:
-            print_message("В таблице " + key + " есть расхождения по атрибутам", res_txt, output_to_file, mappings_directory)
-            if output_diff:
-                print_message('Атрибуты, которые есть только в маппинге', res_txt, output_to_file, mappings_directory)
-                print_message(str(mapping_set - dag_set), res_txt, output_to_file, mappings_directory)
-                print_message('Атрибуты, которые есть только в даге', res_txt, output_to_file, mappings_directory)
-                print_message(str(dag_set - mapping_set), res_txt, output_to_file, mappings_directory)
+        try:
+            for item in dag_dict[key]:
+                if 'alias' not in item.keys():
+                    dag_set.add(item['name'])
+                else:
+                    dag_set.add(item['alias'])
+            if mapping_set != dag_set:
+                print_message("В таблице " + key + " есть расхождения по атрибутам", res_txt, output_to_file, mappings_directory)
+                if output_diff:
+                    print_message('Атрибуты, которые есть только в маппинге', res_txt, output_to_file, mappings_directory)
+                    print_message(str(mapping_set - dag_set), res_txt, output_to_file, mappings_directory)
+                    print_message('Атрибуты, которые есть только в даге', res_txt, output_to_file, mappings_directory)
+                    print_message(str(dag_set - mapping_set)+'\n', res_txt, output_to_file, mappings_directory)    
+        except:
+            print_message('В даге нет таблицы ' + key, res_txt, output_to_file, mappings_directory)
+        
 
 def main(dags_path, mappings_directory, output_diff, output_to_file):
     dag_dict = get_attrs_from_dag(dags_path)
