@@ -31,7 +31,8 @@ def get_attrs_from_dag(dags_path):
     dag = dag.replace('\'', '"')
     dag = dag.split(start_json)[1].split(end_json)
 
-    dag = dag[0].replace('\t', '').replace(' ', '').replace('\n', '')
+    dag = re.sub('(#[\S| ]*\n)|\t|\n| ', '', dag[0])    #убираем в даге комментарии, табуляцию, переносы строк и пробелы
+    dag = dag.replace('},}', '}}').replace('},]','}]')  #убираем лишние запятые, которые могут сломать чтение джейсона
     dag = re.split('loadType', dag)
 
     dag_dict = {}
