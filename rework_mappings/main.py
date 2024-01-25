@@ -1,8 +1,10 @@
 import openpyxl
 import pandas as pd
+from openpyxl import Workbook, load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill, Alignment, Border, Side
 from openpyxl.utils.cell import get_column_letter
+import numpy as np
 
 #Досборка эксель-маппинга по предыдущему и сгенерированному. 
 #В переменной old_mappings_path обязательно указать путь до старого маппинга, чтобы сохранить все комментарии и другие необязательные поля
@@ -14,8 +16,34 @@ result_mappings_path = 'Абсолютный путь для маппинга д
 old_mappings = pd.read_excel(old_mappings_path, sheet_name='Mapping', skiprows=1, index_col=0)
 new_mappings = pd.read_excel(new_mappings_path, sheet_name='Sheet', skiprows=1, index_col=0)
 
-mappings = pd.concat([old_mappings, new_mappings])
-mappings.drop_duplicates(subset=['Таблица', 'Код атрибута', 'Тип данных.1'], inplace=True)
+old_mappings_divided = []
+for table in old_mappings['Таблица'].unique():
+    old_mappings_divided.append(old_mappings[old_mappings['Таблица'] == table])
+
+
+new_mappings_divided = []
+for table in new_mappings['Таблица'].unique():
+    new_mappings_divided.append(new_mappings[new_mappings['Таблица'] == table])
+
+new_tables = np.setdiff1d(new_mappings['Таблица'].unique(), old_mappings['Таблица'].unique())
+
+result_mappings = pd.DataFrame()
+
+for old_table in old_mappings_divided:
+    is_overlaped = False
+    for new_table in new_mappings_divided:
+        if new_table.iloc[0]['Таблица'] == old_table.iloc[0]['Таблица']:
+            result_mappings = result_mappings._append(pd.concat([old_table, new_table], ignore_index=True))
+            is_overlaped = True
+    if not is_overlaped:
+        result_mappings = pd.concat([result_mappings, old_table], ignore_index=True)
+
+for table in new_mappings_divided:
+    if table.iloc[0]['Таблица'] in new_tables:
+        result_mappings = pd.concat([result_mappings, table], ignore_index=True)
+
+result_mappings.drop_duplicates(subset=['Таблица', 'Код атрибута', 'Тип данных.1'], inplace=True, ignore_index=True)
+result_mappings.index += 1
 
 wb = openpyxl.Workbook()
 # Create new execel list
@@ -37,7 +65,7 @@ ws.column_dimensions['C'].width = len_target + 1
 
 ws.append(headers)
 
-for r in dataframe_to_rows(mappings, index=True, header=False):
+for r in dataframe_to_rows(result_mappings, index=True, header=False):
     ws.append(r)
 
 ws.delete_rows(3, 1)
