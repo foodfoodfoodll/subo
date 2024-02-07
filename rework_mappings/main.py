@@ -25,33 +25,43 @@ def rework_one_mapping(old_mappings_path, new_mappings_path, result_mappings_pat
     old_mappings = pd.read_excel(old_mappings_path, sheet_name='Mapping', skiprows=1, index_col=0)
     new_mappings = pd.read_excel(new_mappings_path, sheet_name='Sheet', skiprows=1, index_col=0)
 
+
+    table_col = 'Таблица.1' if 'Таблица.1' in list(old_mappings.columns.values) else 'Таблица'
+    code_col = 'Код атрибута.1' if 'Код атрибута.1' in list(old_mappings.columns.values) else 'Код атрибута'
+    type_col = 'Тип данных.1' if 'Тип данных.1' in list(old_mappings.columns.values) else 'Тип данных'
+    table_col_new = 'Таблица.1' if 'Таблица.1' in list(new_mappings.columns.values) else 'Таблица'
+    code_col_new = 'Код атрибута.1' if 'Код атрибута.1' in list(new_mappings.columns.values) else 'Код атрибута'
+    type_col_new = 'Тип данных.1' if 'Тип данных.1' in list(new_mappings.columns.values) else 'Тип данных'
+
+    new_mappings = new_mappings.rename(columns={table_col_new: table_col, code_col_new: code_col, type_col_new: type_col})
+
     old_mappings_divided = []
-    for table in old_mappings['Таблица'].unique():
-        old_mappings_divided.append(old_mappings[old_mappings['Таблица'] == table])
+    for table in old_mappings[table_col].unique():
+        old_mappings_divided.append(old_mappings[old_mappings[table_col] == table])
 
 
     new_mappings_divided = []
-    for table in new_mappings['Таблица'].unique():
-        new_mappings_divided.append(new_mappings[new_mappings['Таблица'] == table])
+    for table in new_mappings[table_col].unique():
+        new_mappings_divided.append(new_mappings[new_mappings[table_col] == table])
 
-    new_tables = np.setdiff1d(new_mappings['Таблица'].unique(), old_mappings['Таблица'].unique())
+    new_tables = np.setdiff1d(new_mappings[table_col].unique(), old_mappings[table_col].unique())
 
     result_mappings = pd.DataFrame()
 
     for old_table in old_mappings_divided:
         is_overlaped = False
         for new_table in new_mappings_divided:
-            if new_table.iloc[0]['Таблица'] == old_table.iloc[0]['Таблица']:
+            if new_table.iloc[0][table_col] == old_table.iloc[0][table_col]:
                 result_mappings = result_mappings._append(pd.concat([old_table, new_table], ignore_index=True))
                 is_overlaped = True
         if not is_overlaped:
             result_mappings = pd.concat([result_mappings, old_table], ignore_index=True)
 
     for table in new_mappings_divided:
-        if table.iloc[0]['Таблица'] in new_tables:
+        if table.iloc[0][table_col] in new_tables:
             result_mappings = pd.concat([result_mappings, table], ignore_index=True)
 
-    result_mappings.drop_duplicates(subset=['Таблица', 'Код атрибута', 'Тип данных.1'], inplace=True, ignore_index=True)
+    result_mappings.drop_duplicates(subset=[table_col, code_col, type_col], inplace=True, ignore_index=True)
     result_mappings.index += 1
 
     wb = openpyxl.Workbook()
@@ -61,7 +71,7 @@ def rework_one_mapping(old_mappings_path, new_mappings_path, result_mappings_pat
 
     # Create headers
     source_target: list[str] = ["#", "Тип объекта"]
-    source: list[str] = ["База/Система", "Класс", "Наименование класса","Тэг в JSON", "Описание Тэга", "Тип данных","Длина", "PK", "FK", "Not Null"]
+    source: list[str] = list(old_mappings.columns.values)[:list(old_mappings.columns.values).index('База/Система.1')]
     target: list[str] = ["База/Система", "Схема", "Таблица", "Название родительской таблицы", "Описание таблицы", "Код атрибута", "Описание атрибута", "Комментарий", "Тип данных", "Length", "PK", "FK", "Not Null", "Rejectable", "Trace New Values"]
     len_sourcetarget: int = len(source_target)
     len_source: int = len(source)
