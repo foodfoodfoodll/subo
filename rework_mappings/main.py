@@ -5,13 +5,23 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill, Alignment, Border, Side
 from openpyxl.utils.cell import get_column_letter
 import numpy as np
+import os
 
 from tkinter import *
 from tkinter import messagebox, filedialog
 
-
 def do_rework(old_mappings_path, new_mappings_path, result_mappings_path):
-    result_mappings_path = result_mappings_path + "/result.xlsx"
+    old_mappings_files = os.listdir(old_mappings_path)
+    for old_file in old_mappings_files:
+        if old_file.endswith('.xlsx'):
+            try:
+                rework_one_mapping(old_mappings_path=old_mappings_path+'/'+old_file, 
+                                   new_mappings_path=new_mappings_path+'/'+old_file, 
+                                   result_mappings_path=result_mappings_path+'/result_'+old_file)
+            except ValueError:
+                print("Не найден маппинг " + ValueError)
+
+def rework_one_mapping(old_mappings_path, new_mappings_path, result_mappings_path):
     old_mappings = pd.read_excel(old_mappings_path, sheet_name='Mapping', skiprows=1, index_col=0)
     new_mappings = pd.read_excel(new_mappings_path, sheet_name='Sheet', skiprows=1, index_col=0)
 
@@ -138,18 +148,18 @@ old_mappings_path = StringVar()
 new_mappings_path = StringVar()
 result_mappings_path = StringVar()
 
-old_mappings_path_lbl = Label(window, text="Выберите старый файл маппинга:")
+old_mappings_path_lbl = Label(window, text="Выберите путь старых маппингов:")
 old_mappings_path_txt = Entry(window, width=50, textvariable=old_mappings_path, bg='white')
-old_mappings_path_btn = Button(window, text="...", command=lambda: old_mappings_path.set(filedialog.askopenfilename()), bg='white', width=2)
+old_mappings_path_btn = Button(window, text="...", command=lambda: old_mappings_path.set(filedialog.askdirectory()), bg='white', width=2)
 
 old_mappings_path_lbl.place(x=10, y=10) 
 old_mappings_path_txt.place(x=255, y=13)
 old_mappings_path_btn.place(x=555, y=8)
 
 
-new_mappings_path_lbl = Label(window, text="Выберите новый файл маппинга:")
+new_mappings_path_lbl = Label(window, text="Выберите путь новых маппингов:")
 new_mappings_path_txt = Entry(window, width=50, textvariable=new_mappings_path, bg='white')
-new_mappings_path_btn = Button(window, text="...", command=lambda: new_mappings_path.set(filedialog.askopenfilename()), bg='white', width=2)
+new_mappings_path_btn = Button(window, text="...", command=lambda: new_mappings_path.set(filedialog.askdirectory()), bg='white', width=2)
 
 new_mappings_path_lbl.place(x=10, y=35) 
 new_mappings_path_txt.place(x=255, y=38)
