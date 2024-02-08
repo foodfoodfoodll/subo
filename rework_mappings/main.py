@@ -1,6 +1,5 @@
 import openpyxl
 import pandas as pd
-from openpyxl import Workbook, load_workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill, Alignment, Border, Side
 from openpyxl.utils.cell import get_column_letter
@@ -8,7 +7,7 @@ import numpy as np
 import os
 
 from tkinter import *
-from tkinter import messagebox, filedialog
+from tkinter import filedialog
 
 def do_rework(old_mappings_path, new_mappings_path, result_mappings_path):
     old_mappings_files = os.listdir(old_mappings_path)
@@ -18,8 +17,23 @@ def do_rework(old_mappings_path, new_mappings_path, result_mappings_path):
                 rework_one_mapping(old_mappings_path=old_mappings_path+'/'+old_file, 
                                    new_mappings_path=new_mappings_path+'/'+old_file, 
                                    result_mappings_path=result_mappings_path+'/result_'+old_file)
-            except ValueError:
-                print("Не найден маппинг " + ValueError)
+            except Exception as error:
+                print("Не найден маппинг " + str(error))
+
+def add_comment(old_table, new_table, table_col, code_col, type_col):
+    diff_table = pd.merge(old_table, new_table, how='outer', on=[table_col, code_col, type_col], indicator='exist', suffixes=('', '_right'))
+    diff_table.loc[diff_table['exist'] == 'left_only', 'Комментарий'] = 'Поле удалено'
+    diff_table.loc[diff_table['exist'] == 'right_only', 'Комментарий'] = 'Поле добавлено'
+    diff_table.drop(columns=['exist'], inplace=True)
+
+    col_list = list(diff_table.columns.values)
+    for col_name in col_list:
+        col_name_right = col_name + '_right'
+        if not col_name.endswith('_right') and col_name_right in col_list:
+            for i in range(diff_table.shape[0]):
+                diff_table.loc[pd.isna(diff_table[col_name]), col_name] = diff_table.at[i, col_name_right]
+            diff_table.drop(columns=[col_name_right], inplace=True)
+    return diff_table
 
 def rework_one_mapping(old_mappings_path, new_mappings_path, result_mappings_path):
     old_mappings = pd.read_excel(old_mappings_path, sheet_name='Mapping', skiprows=1, index_col=0)
@@ -52,7 +66,7 @@ def rework_one_mapping(old_mappings_path, new_mappings_path, result_mappings_pat
         is_overlaped = False
         for new_table in new_mappings_divided:
             if new_table.iloc[0][table_col] == old_table.iloc[0][table_col]:
-                result_mappings = result_mappings._append(pd.concat([old_table, new_table], ignore_index=True))
+                result_mappings = pd.concat([result_mappings, add_comment(old_table, new_table, table_col, code_col, type_col)], ignore_index=True)
                 is_overlaped = True
         if not is_overlaped:
             result_mappings = pd.concat([result_mappings, old_table], ignore_index=True)
