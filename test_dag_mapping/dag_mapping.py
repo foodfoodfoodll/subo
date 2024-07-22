@@ -7,13 +7,10 @@ from tkinter import *
 from tkinter import messagebox, filedialog
 from tkinter.ttk import Checkbutton
 from tkinter.scrolledtext import ScrolledText
+# import pyperclip
 
 start_json = '"flows":'
 end_json = 'def spark_operator'
-
-dags_path = '1642_19_datalake_subo_gsz_1567_parse_load.py'
-mappings_directory = '.'
-
 
 def print_message(text, widget, output_to_file=False, path=''):
     widget.insert(END, str(text) + '\n')
@@ -46,7 +43,6 @@ def get_attrs_from_dag(dags_path):
             if s.find('"target":{') > 0:
                 table = re.split('"target":{', s)
                 break
-        # table = re.split('}', table[1])
         table = re.split(',', table[1])
         table = re.split('}', table[0])
         table = table[0].replace('"', '').replace('table:','').lower()
@@ -54,7 +50,12 @@ def get_attrs_from_dag(dags_path):
         json_str = '{"' + table + '":' + attrs + '}'
 
         dag_dict.update(json.loads(json_str))
-        dag_dict[table].append({'name': 'current_ts', 'type': 'timestamp', 'alias': 'hdp_processed_dttm'})
+        dag_dict[table].append({'name': 'current_ts', 'coltype': 'timestamp', 'alias': 'hdp_processed_dttm'})
+    for key, value in dag_dict.items():
+        for i in range(0, len(value)):
+            if 'alias' in value[i].keys():
+                value[i]['name'] = value[i]['alias']
+                del value[i]['alias']
     return dag_dict
 
 def get_attrs_from_mapping(mappings_directory):
@@ -97,7 +98,6 @@ def get_attrs_from_mapping(mappings_directory):
             excel_df = tmp_df
         else:
             excel_df = pd.concat([excel_df, tmp_df])
-
     mapping_dict = {}
     for index, row in excel_df.iterrows():
         try:
@@ -108,13 +108,13 @@ def get_attrs_from_mapping(mappings_directory):
             mapping_dict[table_name]=[]
         m = mapping_dict[table_name]
         try:
-            m.append({'name': row[code_col].lower().strip(), 'type':  row[type_col].lower()})
+            m.append({'name': row[code_col].lower().strip(), 'coltype':  row[type_col].lower().replace(' ', '')})
         except:
-            m.append({'name': row[code_col], 'type':  row[type_col]})
+            m.append({'name': row[code_col], 'coltype':  row[type_col]})
         mapping_dict[table_name] = m
     return mapping_dict
 
-def compare_attrs(dag_dict, mapping_dict, output_diff, output_to_file, mappings_directory):
+def old_compare_attrs(dag_dict, mapping_dict, output_to_file, mappings_directory):
     for key, value in mapping_dict.items():
         mapping_set = set()
         dag_set = set()
@@ -122,60 +122,98 @@ def compare_attrs(dag_dict, mapping_dict, output_diff, output_to_file, mappings_
             mapping_set.add(item['name'])
         try:
             for item in dag_dict[key]:
-                if 'alias' not in item.keys():
-                    dag_set.add(item['name'])
-                else:
-                    dag_set.add(item['alias'])
+                dag_set.add(item['name'])
             if mapping_set != dag_set:
                 print_message("В таблице " + key + " есть расхождения по атрибутам", res_txt, output_to_file, mappings_directory)
-                if output_diff:
+                if len(mapping_set - dag_set) != 0:
                     print_message('Атрибуты, которые есть только в маппинге', res_txt, output_to_file, mappings_directory)
                     print_message(str(mapping_set - dag_set), res_txt, output_to_file, mappings_directory)
+                if len(dag_set - mapping_set) != 0:
                     print_message('Атрибуты, которые есть только в даге', res_txt, output_to_file, mappings_directory)
-                    print_message(str(dag_set - mapping_set)+'\n', res_txt, output_to_file, mappings_directory)    
+                    print_message(str(dag_set - mapping_set), res_txt, output_to_file, mappings_directory)   
+                print_message('\n', res_txt, output_to_file, mappings_directory)
         except:
-            print_message('В даге нет таблицы ' + key, res_txt, output_to_file, mappings_directory)
-        
+            print_message('В даге нет таблицы ' + str(key) +'\n', res_txt, output_to_file, mappings_directory)
+    print_message('Сравнение завершено\n', res_txt, output_to_file, mappings_directory)
 
-def main(dags_path, mappings_directory, output_diff, output_to_file):
+def compare_attrs(dag_dict, mapping_dict, output_to_file, mappings_directory):   
+    for key, value in mapping_dict.items():
+        mapping = value # атрибуты и типы в таблице
+        try:
+            dag = dag_dict[key]
+        except:
+            print_message('\nВ даге нет таблицы ' + str(key), res_txt, output_to_file, mappings_directory)
+            continue
+
+        print_message('\n' + key, res_txt, output_to_file, mappings_directory) # название таблицы
+
+        for i in range(0, len(mapping)):
+            for j in range(0, len(dag)):
+                if mapping[i]['name'] == dag[j]['name']:
+                    if mapping[i]['coltype'] != dag[j]['coltype'] and mapping[i]['coltype'] != 'string' and dag[j]['coltype'] != 'hash':
+                        m = f"\tу атрибута {mapping[i]['name']} в маппинге тип {mapping[i]['coltype']}, а в даге - {dag[j]['coltype']}"
+                        print_message(m, res_txt, output_to_file, mappings_directory)
+                    break
+                if j == len(dag)-1:
+                    print_message('\tв даге нет атрибута ' + str(mapping[i]['name']), res_txt, output_to_file, mappings_directory)
+        
+        mapping_set = set()
+        dag_set = set()
+        for item in mapping:
+            mapping_set.add(item['name'])
+        for item in dag:
+            dag_set.add(item['name'])
+        if mapping_set != dag_set:
+            if len(dag_set - mapping_set) != 0:
+                print_message('\t атрибуты, которые есть только в даге: ' + str(dag_set - mapping_set), res_txt, output_to_file, mappings_directory)
+
+    print_message('\nСравнение завершено\n', res_txt, output_to_file, mappings_directory)
+
+
+def main(dags_path, mappings_directory, old_compare, output_to_file):
     dag_dict = get_attrs_from_dag(dags_path)
     if not dag_dict:
         return
     mapping_dict = get_attrs_from_mapping(mappings_directory)
     if not mapping_dict:
         return
-    compare_attrs(dag_dict, mapping_dict, output_diff, output_to_file, mappings_directory)
+    if old_compare:
+        old_compare_attrs(dag_dict, mapping_dict, output_to_file, mappings_directory)
+    else:
+        compare_attrs(dag_dict, mapping_dict, output_to_file, mappings_directory)
+
+delta = 200
 
 window = Tk()
 window.title("Сравнение дага и маппинга")
-window.geometry('600x380')
+window.geometry('800x480')
 
 dags_path = StringVar()
 mappings_directory = StringVar()
-output_diff = BooleanVar()  
+old_compare =  BooleanVar()  
 output_to_file = BooleanVar()  
 main_dag = BooleanVar()  
 
 dags_path_lbl = Label(window, text="Выберите файл дага:")
-dags_path_txt = Entry(window, width=70, textvariable=dags_path, bg='white')
+dags_path_txt = Entry(window, width=103, textvariable=dags_path, bg='white')
 dags_path_btn = Button(window, text="...", command=lambda: dags_path.set(filedialog.askopenfilename()), bg='white', width=2)
 
 dags_path_lbl.place(x=10, y=10) 
 dags_path_txt.place(x=130, y=13)
-dags_path_btn.place(x=555, y=8)
+dags_path_btn.place(x=555+delta, y=8)
 
 
 mappings_directory_lbl = Label(window, text="Выберите директирию с маппингами:")
-mappings_directory_txt = Entry(window, width=54, textvariable=mappings_directory, bg='white')
+mappings_directory_txt = Entry(window, width=87, textvariable=mappings_directory, bg='white')
 mappings_directory_btn = Button(window, text="...", command=lambda: mappings_directory.set(filedialog.askdirectory()), bg='white', width=2)
 
 mappings_directory_lbl.place(x=10, y=35) 
 mappings_directory_txt.place(x=225, y=38)
-mappings_directory_btn.place(x=555, y=33)
+mappings_directory_btn.place(x=555+delta, y=33)
 
 
-output_diff_chk = Checkbutton(window, var=output_diff, padding=0, text = 'Вывести атрибуты, которые не совпадают')
-output_diff_chk.place(x=10, y=60) 
+old_compare_chk = Checkbutton(window, var=old_compare, padding=0, text = 'Использовать старую версию сравнения?')
+old_compare_chk.place(x=10, y=60) 
 
 output_to_file_chk = Checkbutton(window, var=output_to_file, padding=0, text = 'Сохранить результаты в файл')
 output_to_file_chk.place(x=10, y=85) 
@@ -187,11 +225,11 @@ result_lbl.place(x=10, y=110)
 result_btn = Button(window, text="Старт", width=15, height=2,bg='white',
                     command=lambda: main(dags_path.get(),
                                          mappings_directory.get(), 
-                                         output_diff.get(), 
+                                         old_compare.get(), 
                                          output_to_file.get()))
-result_btn.place(x=463, y=83) 
+result_btn.place(x=463+delta, y=83) 
 
-res_txt = ScrolledText(window, width=70,  height=14)
+res_txt = ScrolledText(window, width=95,  height=20)
 res_txt.place(x=10, y=135) 
 
 window.mainloop()
