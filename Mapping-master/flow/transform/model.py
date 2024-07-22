@@ -54,7 +54,8 @@ class Transform:
         parent_table = table_name.replace(f"_{last_array}", "")
         descr_table = self.new_flow.find_table(table_name).describe_table
 
-        descr_parent_table = self.new_flow.find_table(parent_table).describe_table
+        # descr_parent_table = self.new_flow.find_table(parent_table).describe_table
+        descr_parent_table = ''
         parent_path = explodedColumns[-1]
         parent_alias = parent_path + ".hash" if len(parent_path.split(".")) == 1 else ".".join(parent_path.split(".")[1:]) + ".hash"
 
@@ -111,7 +112,8 @@ class Transform:
 
     def append_columns(self, path:str, table_name: str, colType:str, describe_attr:str, anyOfRefs:int, hash_flag:str = None) -> None:
         table_name = table_name.lower().replace(".", "_")
-        self.new_flow.append_attr(table_name, parsedColumns={"name": path, "colType": colType, "alias": path, "description": describe_attr, "comment": ""})
+        # self.new_flow.append_attr(table_name, parsedColumns={"name": path, "colType": colType, "alias": path, "description": describe_attr, "comment": ""})
+        self.new_flow.append_attr(table_name, parsedColumns={"name": path, "colType": colType, "alias": path, "comment": ""})
 
     def update_path(self, path:str, key:str) -> str:
         return path + f".{key}"
