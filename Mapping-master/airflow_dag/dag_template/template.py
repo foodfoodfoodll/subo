@@ -55,59 +55,59 @@ logs_table = vault_conf["psqlStatusTable"]""" + '\n' \
           + \
           f"""
 if stage == "d0":
-        target_db = "test_etl_subo"
-        etl_schema = "test_etl_subo"
+    target_db = "test_etl_subo"
+    etl_schema = "test_etl_subo"
 elif stage == "if":
-        target_db = "ift_repl_subo_{database}"
-        etl_schema ="ift_etl_subo"
+    target_db = "ift_repl_subo_{database}"
+    etl_schema ="ift_etl_subo"
 elif stage == "rr":
-        target_db = "test_repl_subo_{database}"
-        etl_schema = "test_etl_subo"
+    target_db = "test_repl_subo_{database}"
+    etl_schema = "test_etl_subo"
 elif stage == "p0":
-        target_db = "prod_repl_subo_{database}"
-        etl_schema = "prod_etl_subo"
+    target_db = "prod_repl_subo_{database}"
+    etl_schema = "prod_etl_subo"
 else:
-        assert False, 'please, set "STAGE" variable'
+    assert False, 'please, set "STAGE" variable'
 """ \
 + \
 """
 default_args = {
-  "owner": "airflow", 
-  "depends_on_past": False,
-  "start_date": days_ago(1),
-  "retries": 0
+    "owner": "airflow", 
+    "depends_on_past": False,
+    "start_date": days_ago(1),
+    "retries": 0
 }
       
 spark_conf = {
-  "spark.master": "yarn",
-  "spark.submit.deployMode": "cluster",
-  "spark.driver.memory": "4g",
-  "spark.executor.memory": "4g",
-  "spark.executor.cores": "2",
-  "spark.num.executors": "2",
-  "spark.hadoop.hive.exec.dynamic.partition": "true",
-  "spark.hadoop.hive.exec.dynamic.partition.mode": "nonstrict",
-  "spark.driver.userClassPathFirst": "true",
-  "spark.executor.userClassPathFirst": "true",
+    "spark.master": "yarn",
+    "spark.submit.deployMode": "cluster",
+    "spark.driver.memory": "4g",
+    "spark.executor.memory": "4g",
+    "spark.executor.cores": "2",
+    "spark.num.executors": "2",
+    "spark.hadoop.hive.exec.dynamic.partition": "true",
+    "spark.hadoop.hive.exec.dynamic.partition.mode": "nonstrict",
+    "spark.driver.userClassPathFirst": "true",
+    "spark.executor.userClassPathFirst": "true",
 }
 
 common_info = {
-  "targetSchema": etl_schema,
-  "etlSchema": etl_schema_kafka,
-  "logsTable": logs_table,
-  "vault": vault_conf,
-  """ \
+    "targetSchema": etl_schema,
+    "etlSchema": etl_schema_kafka,
+    "logsTable": logs_table,
+    "vault": vault_conf,
+    """ \
 + \
 f'"flagName": {id_is}' + '\n' \
 """
 }
       
 hive_common_info = {
-  "targetSchema": target_db,
-  "etlSchema": etl_schema,
-  "logsTable": logs_table,
-  "vault": vault_conf,
-  """ \
+    "targetSchema": target_db,
+    "etlSchema": etl_schema,
+    "logsTable": logs_table,
+    "vault": vault_conf,
+    """ \
 + \
 f'"flagName": {id_is}' \
 + '\n' \
@@ -115,28 +115,28 @@ f'"flagName": {id_is}' \
 + '\n' \
 """
 load_kafka_json = {
-        "connection": "1642_19_datalake_subo_kafka_load_otpl",
-        "commonInfo": common_info,
-        "flows": [
-            {
-                "loadType": "Scd0Append",
-                "source": {
-                    """ + \
+    "connection": "1642_19_datalake_subo_kafka_load_otpl",
+    "commonInfo": common_info,
+    "flows": [
+        {
+            "loadType": "Scd0Append",
+            "source": {
+                """ + \
 f"\"topic\": \"streaming.smart_replication_change_request_{topic}_default\"," + """
-        \"failOnDataLoss\": \"false\",
-        "incrementField": "hdp_processed_dttm",
-    },
-    "target": {""" + \
-f"\"table\": \"streaming_smart_replication_change_request_{topic}_default\"" + """
+                \"failOnDataLoss\": \"false\",
+                "incrementField": "hdp_processed_dttm",
+            },
+            "target": {\n""" + \
+f"                \"table\": \"streaming_smart_replication_change_request_{topic}_default\"" + """
             }
         }
     ]
 }
 
 scd_build_json = {
-"connection": "1642_19_datalake_hive_load",
-"commonInfo": hive_common_info, 
-"flows":""" + f"""{pprint.pformat(flows, width=250, sort_dicts=False)}""" + '\n' \
+    "connection": "1642_19_datalake_hive_load",
+    "commonInfo": hive_common_info, 
+    "flows":""" + f"""{pprint.pformat(flows, indent=4, width=250, sort_dicts=False, compact=False)}""" + '\n' \
 """} \n 
 
 def check_previous_runs():

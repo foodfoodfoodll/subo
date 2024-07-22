@@ -62,7 +62,7 @@ class TableData:
                         name=parsedColumns["name"],
                         colType=parsedColumns["colType"],
                         alias=parsedColumns["alias"] if "alias" in parsedColumns else None,
-                        description=parsedColumns["description"],
+                        # description=parsedColumns["description"],
                         comment=parsedColumns["comment"]
                     )
                     if flag:
