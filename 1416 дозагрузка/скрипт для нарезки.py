@@ -14,6 +14,10 @@ fields_headers = ['commit_ts', 'op_scn', 'op_seq', 'op_type', 'processed_dt', 'd
 processing_headers = ['commit_ts', 'op_scn', 'op_seq', 'op_type', 'processed_dt', 'dte', 'guid', 'parent_guid', 'object_guid', 'key', 'value']
 history_headers = ['commit_ts', 'op_scn', 'op_seq', 'op_type', 'processed_dt', 'dte', 'guid', 'parent_guid', 'object_guid', 'key', 'index', 'value', 'caption']
 payment_headers = ['commit_ts', 'op_scn', 'op_seq', 'op_type', 'processed_dt', 'dte', 'guid', 'parent_guid', 'object_guid', 'id', 'main', 'systemId']
+fields_index = data_headers.index('fields')
+payment_detail_index = data_headers.index('payment_detail')
+processing_index = data_headers.index('processing_fields')
+history_operation_index = data_headers.index('history_operation')
 now = datetime.now()
 commit_ts = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 processed_dt = now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
@@ -26,7 +30,7 @@ dte = now.strftime("%Y%m%d")
 def write_to_file(filename, data, mode):
     file = open(path_to_result + filename, mode, newline ='', encoding='utf8')
     with file:
-        writer = csv.writer(file, delimiter=';')
+        writer = csv.writer(file, delimiter='')
         writer.writerow(data)
 
 def write_log(data):
@@ -105,23 +109,10 @@ def do_payment(payment, parent_guid):
 ### Поля id, document_id, created_at, updated_at, creation_channel, client_iteraction, creation_source_type, creation_source_id, client_mdm_id, client_unc_id, client_tb_id,
 ### creation_system_id, provider_id, provider_service_id, client_product_id, client_product_number, client_product_type, payment_amount, commission_amount, limit_transaction_id,
 ### rsa_transaction_id, confirm_transaction_id, abs_transaction_id, status, sub_status, fields, description, call_back_notify, abs_transaction_system_id, processing_fields, history_operation, service_provider, payment_detail, guid
-def do_smth(data, fields_index, processing_index, payment_detail_index, history_operation_index):
+def do_smth(data):
     ### Добавили uuid
     guid = str(uuid.uuid4())
-    if fields_index:
-        do_fields(data[fields_index], guid)
-        data[fields_index] = ""
-    if processing_index:
-        do_processing(data[processing_index], guid)
-        data[processing_index] = ""
-    if payment_detail_index and data[payment_detail_index] != '{}':
-        do_payment(data[payment_detail_index], guid)
-        data[payment_detail_index] = ""
-    elif data[payment_detail_index] == '{}':
-        data[payment_detail_index] = ""
-    if history_operation_index:
-        do_history(data[history_operation_index], guid)
-        data[history_operation_index] = ""
+
     row = []
     for item in data_headers:
         if item in headers:
@@ -130,6 +121,23 @@ def do_smth(data, fields_index, processing_index, payment_detail_index, history_
             row.append(guid)
         else:
             row.append('')
+    
+    if row[fields_index] and row[fields_index] != '':
+        do_fields(row[fields_index], guid)
+        row[fields_index] = ""
+    if row[processing_index] and row[processing_index] != '':
+        do_processing(row[processing_index], guid)
+        row[processing_index] = ""
+    if row[payment_detail_index] and row[payment_detail_index] != '' and row[payment_detail_index] != '{}':
+        do_payment(row[payment_detail_index], guid)
+        row[payment_detail_index] = ""
+    elif row[payment_detail_index] == '{}':
+        row[payment_detail_index] = ""
+    if row[history_operation_index] and row[history_operation_index] != '':
+        do_history(row[history_operation_index], guid)
+        row[history_operation_index] = ""
+
+
     write_to_file('txt_payments/txt_payments_' + filename, row, 'a')
 
 
@@ -139,19 +147,15 @@ os.makedirs(path_to_result + 'txt_payment_detail', exist_ok=True)
 os.makedirs(path_to_result + 'txt_history_operation', exist_ok=True)
 os.makedirs(path_to_result + 'txt_processing_fields', exist_ok=True)
 os.makedirs(path_to_result + 'txt_fields', exist_ok=True)
-
+os.makedirs(path_to_result + 'broken_items', exist_ok=True)
 
 for item in files:
     filename = item
     write_log('Начало обработки файла ' + item + '\n')
     with open(path + item, newline='', encoding='utf8') as File:  
-        df = csv.reader(File, delimiter=';')
+        df = csv.reader(File, delimiter='')
         headers = next(df)
         ###индексы подтаблиц (потому что могут отличаться от эталонного - не достает полей, например)
-        fields_index = headers.index('fields') if 'fields' in headers else False
-        payment_detail_index = headers.index('payment_detail') if 'payment_detail' in headers else False
-        processing_index = headers.index('processing_fields') if 'processing_fields' in headers else False
-        history_operation_index = headers.index('history_operation') if 'history_operation' in headers else False
         write_to_file('txt_payments/txt_payments_' + filename, data_headers, 'w')
         if payment_detail_index:
             write_to_file('txt_payment_detail/txt_payment_detail_' + filename, payment_headers, 'w')
@@ -161,14 +165,31 @@ for item in files:
             write_to_file('txt_processing_fields/txt_processing_fields_' + filename, processing_headers, 'w')
         if fields_index:
             write_to_file('txt_fields/txt_fields_' + filename, fields_headers, 'w')
+        write_to_file('broken_items/broken_items_' + filename, headers, 'w')
         for row in df:
-            try:
-                do_smth(row, fields_index, processing_index, payment_detail_index, history_operation_index)
-                write_log('Обработка сущности с идентифкатором  ' + row[1] + '\n')
-            except ValueError as e:
-                print('Ошибка парсинга джейсона в файле ', item)
-                print('Неправильная сущность с идентификатором ', row[0])
-                write_log('Ошибка обработки сущности с идентифкатором  ' + row[0] + '\n')
-                write_to_file('broken_items.csv', row, 'a')
+            row = [cell.replace('\r\n', '') for cell in row]
+            if len(row) == len(headers):
+                try:
+                    do_smth(row)
+                    write_log('Обработка сущности с идентифкатором  ' + row[0] + '\n')
+                except ValueError as e:
+                    print('Ошибка парсинга джейсона в файле ', item)
+                    print('Неправильная сущность ', row)
+                    write_log('Ошибка обработки сущности с идентифкатором  ' + row[0] + '\n')
+                    write_to_file('broken_items/broken_items_' + filename, row, 'a')
+                except IndexError as e:
+                    print('Ошибка парсинга джейсона в файле ', item)
+                    print('Выход за границы массива в сущности ', row)
+                    write_log('Ошибка обработки сущности с идентифкатором  ' + row[0] + '\n')
+                    write_to_file('broken_items/broken_items_' + filename, row, 'a')
+                except:
+                    print('Ошибка парсинга джейсона в файле ', item)
+                    print('Неизвестная ошибка ', row)
+                    write_to_file('broken_items/broken_items_' + filename, row, 'a')
+            else:
+                print('Неверная длина сущности в файле ', item)
+                print('Неправильная сущность ', row)
+                print('Ожидалась длина ', len(headers), ' Получили сущность длиной ', len(row))
+                write_to_file('broken_items/broken_items_' + filename, row, 'a')
     write_log('Конец обработки файла ' + item + '\n')
     write_log('============================================================================' + '\n')
