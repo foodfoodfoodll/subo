@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import yaml
 import typing
+from mappings_schema_registry.mapping import create_mapping
 
 if typing.TYPE_CHECKING:
     from app.app import App
@@ -54,6 +55,31 @@ def setup_ui(app: "App", config_path):
         directory = os.path.dirname(filedialog.askopenfilename())
         entries[0].delete(0, tk.END)
         entries[0].insert(0, directory)
+    
+    def new_window():
+        schema_path = tk.StringVar()
+        new_window = tk.Toplevel(root)
+        new_window.focus_set()
+        new_window.grab_set()
+        new_window.title("Создание маппинга")
+        new_window.geometry("400x200")
+        new_window.config(bg="#C8FDF1")
+
+        schema_path_lbl = tk.Label(new_window, text="Путь к схемам:", font=("Arial", 12), bg="#C8FDF1")
+        schema_path_txt = tk.Entry(new_window, width=40, textvariable=schema_path, bg='white')
+        schema_path_btn = tk.Button(new_window, text="...", command=lambda: schema_path.set(filedialog.askdirectory()), bg='white', width=2)
+
+        schema_path_lbl.place(x=0, y=35) 
+        schema_path_txt.place(x=130, y=35)
+        schema_path_btn.place(x=350, y=35)
+
+        create_button = tk.Button(new_window, text="Create", command=lambda: create_mapping(schema_path.get()))
+        create_button.place(x=200, y=60)
+
+        close_button = tk.Button(new_window, text="Закрыть окно", command=new_window.destroy)
+        close_button.place(x=200, y=85)
+
+        
 
     root = tk.Tk()
     root.title("Autogen")
@@ -88,6 +114,10 @@ def setup_ui(app: "App", config_path):
     # Button "Create"
     create_button = tk.Button(root, text="Create", command=submit)
     create_button.grid(row=19, columnspan=3)
+
+    # Button "Schema registry"
+    create_button = tk.Button(root, text="Schema registry", command=new_window)
+    create_button.grid(row=4, column=5)
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
