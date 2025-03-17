@@ -11,7 +11,7 @@ def save_airflow_dag(app: "App"):
     :return: create dag file in directory
     """
     import os
-    file_path: str = os.path.join(f"{app.config.file_dir}", f"1642_19_datalake_{app.config.database}_{app.config.id_ris}_load.py")
+    file_path: str = os.path.join(f"{app.config.file_dir}", f"1642_19_datalake_subo{app.config.database}_{app.config.id_ris}_parse_load.py")
 
     with open(file_path, 'w') as dag:
         dag.write(dt.tmp_dag(app.config.docs,

@@ -20,9 +20,9 @@ class Flow:
         elif loadType.lower() == 'scd0appendpartition':
             target = {
                 'table': table_name,
-                'aggregationField': 'dte',
+                'aggregationField': 'date_format(changeTimestamp,"yyyyMMdd")',
                 'partitionFields': ['dte'],
-                'customPartitioning': 'Day',
+                'customPartitioning': 'CustomExpression',
                 'updateAllowed': True
             }
         else:
